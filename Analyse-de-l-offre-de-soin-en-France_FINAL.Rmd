@@ -1,0 +1,434 @@
+---
+title: "Analyse multivariée de l'offre de soins en France"
+subtitle: "Étude comparative de la structure départementale de l'offre de soins"
+author: "Fadli Aaron, Moreau Matteo et Kurnaz Kubra"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 3
+    number_sections: true
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      fig.crop = FALSE)
+```
+
+```{r chargement des données}
+#Finess
+source("Script/00_finess.R")
+
+#Ameli
+source("Script/00_ameli_effectif.R")
+```
+
+\newpage
+
+# Introduction
+
+## Contexte et objectifs
+
+L'analyse de l'offre de soins constitue un enjeu majeur pour les politiques publiques. La répartition territorial des professionnels de santé ainsi que l'évolution de leur caractéristiques démographiques sont des éléments essentiels pour anticiper les besoins futurs et orienter en conséquence les politiques d'aménagement sanitaire du territoire.
+
+Cette étude propose une analyse de l'offre de soins à l'échelle départementale, en mobilisant plusieurs approches complémentaires : 
+
+- **L'Analyse en Composantes Principales (ACP)**, qui permet d'étudier les relations entre variables quantitatives continues décrivant le volume et la structure démographique de l'offre
+- **L'Analyse des Correspondances Multiples (ACM)**, qui propose une typologie qualitative des territoires à partir de variables catégorielles construites par discrétisation
+- **L'analyse Factorielles des Correspondances (AFC)**, qui propose ...
+- **Le clustering**, qui propose ...
+
+## Objectifs de l'analyse
+
+L'objectif principal de cette étude est de caractériser la structure A COMPLETER
+
+# Méthodologie
+
+## Source de données
+
+### Données AMELI - démographie des professionnels de santé
+
+La base AMELI, issue du portail data.ameli.fr, constitue la source principale de cette étude. Elle fournit des informations détaillées sur les effectifs de professionnels de santé selon: 
+
+- Le sexe
+- La classe d'âge
+- La profession
+- Le département
+- L'année
+
+Ces données présentent une granularité départementale annuellement ce qui permet donc de construire des indicateurs démographiques synthétiques. 
+
+
+```{r tableau_ameli, results='asis'}
+source("Script/00_tab_pres_ameli.R")
+tab1
+rm(tab1)
+```
+
+
+### Données FINESS – établissements de santé
+
+La base FINESS, issue de data.gouv.fr, recense les établissements sanitaires et médico-sociaux. Après fusion des informations administratives et géographiques, elle permet d'identifier la localisation départementale de chaque établissement.
+
+Contrairement aux données AMELI, FINESS ne dispose pas d'une dimension temporelle homogène sur la période étudiée. Les informations issues de cette base sont donc considérées comme structurelles, c'est-à-dire constantes dans le temps.
+
+```{r tableau_finess, results='asis'}
+source("Script/00_tab_pres_finess.R")
+tab1
+rm(tab1)
+```
+
+## Nettoyage et harmonisation des données
+
+### Traitement des données AMELI
+
+Afin d'éviter les doublons et les agrégats non désirés et incompatibles avec notre analyse territoriale, plusieurs traitements ont été appliqués :
+
+- Exclusion de la modalité "tout sexe" et "sexe inconnu"
+- Exclusion des agrégats territoriaux "FRANCE" et "Tout département"
+- Exclusion des classes d'âge "Tout âge" et "âge inconnu"
+- Exclusion des regroupements de professions de type "Ensemble des..."
+
+Ces opérations garantissent que chaque observation corresponde à un effectif réel, rattaché à une profession, un sexe, une classe d'age connu, un département et enfin une année. 
+
+### Harmonisation des codes départementaux
+
+La variable département qui a été utilisé pour la jointure issue de **FINESS** utilise des codes spécifiques pour certains territoires. Ces codes ont été recodés selon la nomenclature standard de l'INSEE : 
+
+- 9A --> 971 (Guadeloupe)
+- 9B --> 972 (Martinique)
+- 9C --> 973 (Guyane)
+- 9D --> 974 (La Réunion)
+- 9E --> 975 (Saint-Pierre-et-Miquelon)
+- 9F --> 976 (Mayotte)
+
+## Construction des indicateurs pour l'ACP
+
+L'ACP repose sur cinq variables quantitatives continues construire à partir des données, agrégées en couple département × année.
+
+### Indicateurs de structure démographique
+
+**Part des femmes**
+
+La part des femmes est calculée comme le rapport entre l'effectif féminin et l'effectif total :
+
+$$\text{part\_femmes} = \frac{\text{effectif femmes}}{\text{effectif total}}$$
+
+**Part des professionnels de 60 ans et plus**
+
+La part des 60 ans et plus est calculée à partir des classes d'âge 60-64 ans, 65-69 ans et 70 ans et plus :
+
+$$\text{part\_60\_plus} = \frac{\text{effectif des 60 ans et plus}}{\text{effectif total}}$$
+
+Cet indicateur constitue une mesure centrale du vieillissement de l'offre de soins et des enjeux de renouvellement démographique.
+
+**Âge moyen estimé**
+
+L'âge moyen est estimé par une moyenne pondérée des centres de classes d'âge, les pondérations étant les effectifs correspondants. Cette méthode est couramment utilisée lorsque l'âge individuel n'est pas disponible.
+
+### Indicateurs de volume
+
+**Effectif total de professionnels (transformation logarithmique)**
+
+L'effectif total correspond à la somme des effectifs de professionnels de santé, toutes professions confondues, par département et par année. Afin de limiter l'influence des départements les plus peuplés dans l'ACP, une transformation logarithmique est appliquée :
+
+$$\text{effectif\_total\_log} = \log(1 + \text{effectif\_total})$$
+```{r tableau_acp, results='asis'}
+source("Script/01_fusion_ACP.R")
+source("Script/01_tab_pres_acp.R")
+tab1
+rm(tab1)
+```
+
+
+## Construction des variables pour l'ACM
+
+L'ACM nécessite des variables qualitatives. Ces variables sont construites par **discrétisation en tertiles** des indicateurs quantitatifs précédents.
+
+### Principes de discrétisation
+
+Le choix de la discrétisation en tertiles repose sur plusieurs considérations :
+
+- Absence de seuils clairement établis
+- Volonté d'obtenir des modalités équilibrées en effectifs
+
+**Important** : Les seuils sont calculés sur l'ensemble des observations (toutes années confondues), ce qui garantit une interprétation homogène dans le temps et permet des comparaisons inter-temporelles cohérentes.
+
+### Variables qualitatives construites
+
+**Niveau d'offre de soins**
+
+La variable `niveau_offre` est construite à partir de l'effectif total de professionnels par département et par année. Trois modalités sont définies :
+
+- **Faible** : départements situés dans le premier tertile
+- **Moyen** : départements situés dans le deuxième tertile
+- **Élevé** : départements situés dans le troisième tertile
+
+Cette variable caractérise le niveau global de dotation en professionnels de santé.
+
+**Féminisation de l'offre**
+
+La variable `feminisation` repose sur la part des femmes parmi les professionnels de santé. Trois modalités sont retenues :
+
+- **Faible** : départements avec une féminisation inférieure au premier tertile
+- **Intermédiaire** : départements situés dans le deuxième tertile
+- **Forte** : départements avec une féminisation supérieure au deuxième tertile
+
+Cette variable permet de saisir les différences territoriales et temporelles dans la composition sexuée de l'offre de soins.
+
+**Vieillissement de l'offre**
+
+La variable `vieillissement` est construite à partir de la part des professionnels âgés de 60 ans et plus. Trois modalités sont définies :
+
+- **Jeune** : départements avec une faible part de professionnels de 60 ans et plus
+- **Intermédiaire** : départements situés dans le deuxième tertile
+- **Vieillissante** : départements avec une forte part de professionnels de 60 ans et plus
+
+Cette variable constitue un indicateur central pour analyser les enjeux de renouvellement de l'offre de soins.
+
+### Équilibrage et validation
+
+La discrétisation en tertiles conduit naturellement à un équilibre parfait des modalités sur l'ensemble de la base :
+
+- Chaque modalité représente environ un tiers des observations
+- Aucune modalité rare n'est observée
+- Aucune variable constante n'est introduite
+
+```{r tableau_acm, results='asis'}
+source("Script/01_fusion_ACM.R")
+source("Script/01_tab_pres_acm.R")
+tab1
+rm(tab1)
+```
+
+\newpage
+
+# Analyse en Composantes Principales (ACP)
+
+## Analyse comparative 2010 vs 2024
+
+L'ACP a été réalisé sur 101 départements français pour chacune des deux années de référence (2010 et 2024) avec 5 variables quantitatives actives.
+Les individus sont donc chacun des départements français. 
+
+### Éboulis des valeurs propres
+
+```{r acp_eboulis_vp, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/02_acp_vp.R")
+comparaison_eboulis
+rm(comparaison_eboulis)
+```
+
+Les éboulis des valeurs propres montrent que les deux premières dimensions concentrent l'essentiel de l'information aussi bien en 2010 qu'en 2024.
+En 20010, les deux premiers axes expliquent 80,8% de la variance totale, tandis qu'en 2024 cette proportion atteint 84,6%, indiquant une structure factorielle légèrement plus concentrée dans le temps. La forte décroissance observée après la deuxième dimension suggère que les axes suivants apportent une information marginale ce qui implique que l'analyse peut être raisonnablement limitée aux deux premiers axes pour l'interprétation des structures territoriales de l'offre de soins.
+
+### Cercle des corrélations
+
+```{r acp_cercle_corr, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/02_acp_cercle.R")
+graphique_final
+rm(graphique_final)
+```
+
+L'analyse des cercles de corrélations met en évidence deux dimensions structurantes communes aux deux années étudiées, bien que leur positionnement sur les axes diffère.
+
+En 2010, la première dimension est principalement associée aux variables de volume de l'offre de soins, notamment l'effectif total de professionnels de santé et le nombre d'établissements. Elle traduit un gradient opposant les départements fortement dotés ç ceux disposant d'une offre plus restreinte. La seconde dimension est davantage corrélée aux variables de structure démographique, en particulier l'âge moyen et la part des professionnels âgés de 60 ans et plus. 
+
+En 2024, on observe une inversion des axes : les variables qui structuraient majoritairement la première dimension en 2010 contribuent davantage à la seconde, et inversement. Cette inversion ne correspond malgré cela pas à un changement de sens des axes mais à une rotation du plan factoriel, les axes de l'ACP étant définis indépendamment pour chaque année. Ainsi, la numérotation des dimensions n'est pas directement comparable dans le temps. 
+
+Dans les deux cas, les mêmes dimensions latentes demeurent : 
+
+- une dimension liée au volume global de l'offre de soin,
+- une dimension liée à la structure démographique des professionnels.
+
+En revanche, leur poids relatif dans l'explication de la variance évolue. En 2024, les variables d'âge et de vieillissement contribuent davantage à la structuration de l'espace factoriel, suggérant que les différences territoriales sont de plus en plus liées au profil démographique des professionnels de santé, et non plus uniquement à la quantité d'offre disponible.
+
+### Contributions des variables aux dimensions 
+
+```{r acp_contrib_dim1, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/02_acp_contrib_dim1.R")
+comparaison_contrib
+rm(comparaison_contrib)
+```
+
+```{r acp_contrib_dim2, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/02_acp_contrib_dim2.R")
+comparaison_contrib
+rm(comparaison_contrib)
+```
+
+L'analyse des contributions confirme cette lecture. La dimension associé au volume est principalement portée par l'effectif total et le nombre d'établissements, tandis que la dimension démographique est dominée par l'âge moyen et la part des professionnels de 60 ans et plus. 
+La part des femmes contribue de manière plus modérée mais régulière, traduisant une feminisation progressive et relativement homogène de l'offre de soins sur l'ensemble du territoire. 
+
+### Projection des individus 
+
+```{r acp_individu, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/02_acp_individu.R")
+projection_comparee
+rm(projection_comparee)
+```
+
+Les projections des départements sur le plan factoriel révèlent une forte dispersion selon la dimension de volume, mettant en évidence d'importantes inégalités territoriales en matière d'offre de soins. Certains départements se distinguent par des positions extrêmes, reflétant des situations atypiques de forte concentration ou de sous-dotation. 
+
+Entre 2010 et 2024, la structure selon la dimension démographique devient plus visible, avec une différenciation accrue de certains territoires en fonction du vieillisement de leur offre de soins. Cette évolution confirme le rôle croissant des enjeux démographiques dans l'analyse territoriale de l'offre de soins.
+
+## Conclusion synthétique de l'ACP
+
+L'analyse en composantes principales met ainsi en évidence une structuration stable de l'offre de soins autour de deux dimensions fondamentales : **le volume et la structure démographique**, tout en soulignant une évolution notable de leur importance relative. Entre 2010 et 2024, le vieillisement des professionnels de santé apparaît comme un facteur de plus en plus discriminant entre les départements, au même titre que le niveau global de dotation.
+
+\newpage 
+
+# Analyse des Correspondances Multiples (ACM)
+
+## Analyse comparative 2010 vs 2024
+
+Comme précédement, l'ACM a été réalisée sur 101 départements français pour chacune des deux années de références (2010 et 2024), avec 3 variables qualitatives actives (9 modalités au total).
+
+### Éboulis des valeurs propres 
+
+```{r acm_eboulis_vp, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/03_acm_vp.R")
+acm_eboulis_compare
+rm(acm_eboulis_compare)
+```
+
+Les éboulis des valeurs propres montrent que, pour les deux années étudiées, les premières dimensions expliquent une part substantielle de l'inertie totale. En 2010, les deux premiers axes cumulent environ 41,5% de l'intertie, tandis qu'en 2024 cette proportion atteint 47,5%, traduisant une structuration légèrement plus marquée des profils départementaux dans le temps. 
+
+Comme c'est fréquemment le cas en ACM, l'intertie est plus diffuse que dans une ACP, ce qui justifie une interprétation prudente et principalement sur les deux premières dimensions.
+
+### Interprétation des axes et plan factoriel
+
+```{r acm_variable, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/03_acm_variable.R")
+comparaison_acm
+rm(comparaison_acm)
+```
+
+L'analyse des modalités projetées sur le plan factoriel met en évidence des structures comparables entre 2010 et 2024, bien que leur positionnement sur les axes diffère.
+
+En 2010, la première dimension oppose principalement les départements caractérisés par une offre de soins faible et une structure vieillisante à ceux disposant d'une offre plus élevée et d'un profil plus favorable. La seconde dimension est davantage structurée par la féminisation de l'offre, opposant des territoires faiblement féminisés à ceux où la part des femmes est plus importante. 
+
+En 2024, on observe une réorganisation du plan factoriel : certaines modalités qui structuraient principalement la première dimension en 2010 contribuent davantage à la seconde, et inversement. Cette évolution ne doit pas être interprétée comme une inversion de sens des axes, mais comme précédemment par une rotation du repère factoriel, les axes étant définis indépendamment pour chaque année. 
+
+Dans les deux cas, les dimensions interprétatives restent similaires : 
+
+- une dimension liée à la dotation globale en offre de soins,
+- une dimension liée à la structure démographique, en particulier au vieillisement et à la féminisation.
+
+La différence observée entre 2010 et 2024 traduit une évolution du poids relatif de ces dimensions dans la structuration des territoires. 
+
+### Contributions des modalités
+
+```{r acm_contrib_dim1, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/03_acm_contrib_dim1.R")
+acm_contrib1_compare
+rm(acm_contrib1_compare)
+```
+
+```{r acm_contrib_dim2, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/03_acm_contrib_dim2.R")
+acm_contrib2_compare
+rm(acm_contrib2_compare)
+```
+
+
+L'analyse des contributions confirme cette lecture. Les modalités associées à une offre élevée et à un vieillissement marqué contribuent fortement aux axes principaux, traduisant leur rôle structurant dans la différenciation des départements. 
+
+En 2024, les modalités liées au vieillissement de l'offre apparaissent plus contributives qu'en 2010, ce qui suggère une montée en importance de cet enjeu dans la typologie territoriale. La féminisation, bien que présente sur les deux dimensions, joue un rôle plus transveral et moins discriminant.
+
+### Projection des individus
+
+```{r acm_individu, fig.width=10, fig.height=5, fig.align='center', out.width='100%'}
+source("Script/03_acm_individu.R")
+acm_ind_compare
+rm(acm_ind_compare)
+```
+
+La projection des départements sur le plan factoriel met en évidence une structuration nette selon les profils qualitatifs définis. Certains se distinguent par des positions extrèmes, reflètant des configurations spécifiques combinant faible niveau d'offre, vieillissement prononcé ou, à l'inverse forte dotation et structure plus favorable. 
+
+Entre 2010 et 2024, la dispersion des individus selon les dimensions liées au vieillissement devient plus marquée, suggèrant une différenciation accrue des territoires face aux enjeux de renouvellement de l'offre de soins. 
+
+## Conclusion de l'ACM
+
+L'ACM met ainsi en évidence une typologie territoriale relativement stable de l'offre de soins, structurée autour du niveau de dotation et de la structure démographique des professionnels. Toutefois, la comparaison temporelle souligne une montée en improtance des modalités liées au vieillissement entre 2010 et 2024, confirmant les résultats obtenus par l'ACP et renforçant l'idée d'un enjeu démographique central dans l'évolution de l'offre de soins en France. 
+
+\newpage
+
+# Clustering — Typologie départementale de l’offre de soins (2024)
+
+## Contexte et objectifs
+
+La classification vise à regrouper les départements français selon la similarité de leur profil d’offre de soins en 2024. À partir des variables de volume (effectif et densité) et de structure des établissements (nombre total, hôpitaux, structures privées, ambulatoires, HAD et MSP), elle permet de mettre en évidence des groupes de territoires homogènes et de compléter les analyses factorielles précédentes.
+
+## Choix du nombre de clusters
+
+### Dendrogramme — CAH (Ward)
+
+```{r dendro2024, echo=FALSE, fig.cap="Dendrogramme de la classification ascendante hiérarchique (méthode de Ward), année 2024.", out.width='100%'}
+knitr::include_graphics("GraphClusters/Dendrogramme.png")
+```
+
+Le dendrogramme (Figure \ref{fig:dendro2024}) met en évidence une structuration nette des départements. Les ruptures observées dans les hauteurs de fusion suggèrent l’existence d’un nombre limité de groupes relativement homogènes. Une coupe en quatre classes apparaît comme un compromis pertinent entre qualité statistique de la partition et lisibilité.
+
+### Méthode du coude (WSS)
+
+```{r wss2024, echo=FALSE, fig.cap="Méthode du coude (WSS) pour le choix du nombre de clusters, année 2024.", out.width='85%'}
+knitr::include_graphics("GraphClusters/Methode du coude (WSS).png")
+```
+
+La méthode du coude (Figure \ref{fig:wss2024}) confirme ce choix. La baisse de l’inertie intra-classe est très forte pour les faibles valeurs de $k$, puis ralentit nettement. À partir de $k=4$, les gains marginaux deviennent limités, ce qui plaide pour une partition en quatre groupes.
+
+### Indice de silhouette
+
+```{r silhouette2024, echo=FALSE, fig.cap="Indice moyen de silhouette selon le nombre de clusters, année 2024.", out.width='85%'}
+knitr::include_graphics("GraphClusters/Indice de silhouette.png")
+```
+
+L’indice moyen de silhouette (Figure \ref{fig:silhouette2024}) indique une bonne séparation des groupes pour de faibles valeurs de $k$. Bien que la valeur maximale apparaisse pour $k=3$, la solution $k=4$ conserve une qualité de partition élevée et permet une typologie plus riche. Nous retenons donc $k=4$.
+
+## Résultats et visualisation des groupes
+
+### Projection des clusters (k-means, $k=4$)
+
+```{r km2024, echo=FALSE, fig.cap="Projection des clusters k-means (k = 4) sur le plan ACP, année 2024.", out.width='100%'}
+knitr::include_graphics("GraphClusters/k-means (k=4).png")
+```
+
+La projection sur le plan factoriel (Figure \ref{fig:km2024}) met en évidence une structuration claire de l’espace : les clusters occupent des régions distinctes, ce qui confirme que la classification capte des différences réelles entre profils départementaux.
+
+### Projection des classes issues de la CAH ($k=4$)
+
+```{r cah2024, echo=FALSE, fig.cap="Projection des classes issues de la CAH (k = 4) sur le plan ACP, année 2024.", out.width='100%'}
+knitr::include_graphics("GraphClusters/CAH Ward (k=4).png")
+```
+
+La projection des classes issues de la CAH (Figure \ref{fig:cah2024}) est très proche de celle obtenue par k-means, ce qui renforce la robustesse de la typologie retenue.
+
+## Profils moyens des clusters
+
+### Profils des clusters (moyennes standardisées)
+
+```{r profils2024, echo=FALSE, fig.cap="Profils des clusters : moyennes standardisées (z-scores) des variables, année 2024.", out.width='100%'}
+knitr::include_graphics("GraphClusters/Profils des clusters.png")
+```
+
+Le graphique des profils (Figure \ref{fig:profils2024}) permet d’interpréter le contenu des clusters. Les valeurs étant standardisées, une valeur positive indique un niveau supérieur à la moyenne nationale 2024, tandis qu’une valeur négative indique un niveau inférieur.
+
+Le **cluster 1** correspond à des départements **globalement sous-dotés**, caractérisés par des niveaux inférieurs à la moyenne pour l’effectif, la densité et l’ensemble des indicateurs d’établissements.
+
+Le **cluster 2** se distingue par une **très forte densité et un effectif élevé** de professionnels de santé, alors que les structures d’établissements sont proches de la moyenne. Il s’agit de territoires **très concentrés en professionnels**.
+
+Le **cluster 3** est caractérisé par des niveaux très élevés pour toutes les variables liées aux **établissements de santé** (hôpitaux, structures privées, ambulatoires, HAD et MSP). Il correspond à des départements **fortement structurés en infrastructures de soins**.
+
+Le **cluster 4** présente un profil **intermédiaire**, avec plusieurs indicateurs d’établissements légèrement au-dessus de la moyenne mais une densité et un effectif proches de la moyenne nationale.
+
+## Conclusion du clustering
+
+La classification met en évidence une forte hétérogénéité territoriale de l’offre de soins en France en 2024. Elle distingue des territoires sous-dotés, des territoires très concentrés en professionnels et des pôles fortement structurés autour des établissements. Cette typologie complète les analyses factorielles en offrant une lecture synthétique et directement interprétable des inégalités territoriales.
+
+\newpage
+
