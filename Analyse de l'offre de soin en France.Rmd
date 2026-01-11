@@ -2,18 +2,45 @@
 title: "Analyse multivariée de l'offre de soins en France"
 subtitle: "Étude comparative de la structure départementale de l'offre de soins"
 author: "Fadli Aaron, Moreau Matteo et Kurnaz Kubra"
-date: "`r Sys.Date()`"
+date: |
+  \small Réalisé dans le cadre du Master MECEN de l’Université de Tours \newline
+  le `r format(Sys.Date(), '%d %B %Y')`
+
 output:
   pdf_document:
     latex_engine: xelatex
-    toc: true
+    toc: FALSE
     toc_depth: 3
     number_sections: true
-  html_document:
-    toc: true
-    toc_float: true
+fontsize: 11pt
+geometry: margin=2.5cm
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \usepackage{graphicx}
+  - \usepackage{caption}
+  - \usepackage{titlesec}
+  - \titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+  - \titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+  - \usepackage{titling}
+  - \posttitle{\end{center}}
+html_document:
+    toc: FALSE
+    toc_float: FALSE
     theme: united
+
 ---
+\vspace*{\fill}
+\begin{abstract}
+Cette étude propose une analyse approfondie de la structure territoriale de l'offre de soins en France, en s'appuyant sur les données exhaustives des bases AMELI et FINESS. Ce travail s'inscrit dans le prolongement de notre participation au Challenge Open Data University, au cours duquel une première phase de visualisation a permis d'explorer les disparités régionales au travers d'un dashboard. 
+  L'objectif de ce document est de dépasser le stade descriptif pour caractériser, par des méthodes de statistique multivariée, les dynamiques structurelles qui régissent le système de santé français à l'échelle départementale. Nous mobilisons pour cela une approche complémentaire : une Analyse en Composantes Principales (ACP) et une Analyse des Correspondances Multiples (ACM) pour comparer l'évolution des structures démographiques (vieillissement, féminisation) et des volumes de soins entre 2010 et 2024. Parallèlement, une Analyse Factorielle des Correspondances (AFC) et une classification (Clustering) permettent d'identifier des typologies de territoires et de mettre en lumière les spécialisations médicales propres à certains bassins de population.
+  Les résultats mettent en évidence une structuration de l'offre de soins de plus en plus influencée par les enjeux du renouvellement générationnel des praticiens, révélant ainsi des disparités territoriales croissantes dans l'accès aux soins.
+\end{abstract}
+\vspace*{\fill}
+
+\newpage
+\tableofcontents
+\newpage
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
@@ -41,12 +68,24 @@ Cette étude propose une analyse de l'offre de soins à l'échelle départementa
 
 - **L'Analyse en Composantes Principales (ACP)**, qui permet d'étudier les relations entre variables quantitatives continues décrivant le volume et la structure démographique de l'offre
 - **L'Analyse des Correspondances Multiples (ACM)**, qui propose une typologie qualitative des territoires à partir de variables catégorielles construites par discrétisation
-- **L'analyse Factorielles des Correspondances (AFC)**, qui propose ...
-- **Le clustering**, qui propose ...
+- **L'analyse Factorielles des Correspondances (AFC)**, qui permet d'aalyser les relations entre les professions de santé et les territoires afin d'identifier les profils de spécialisation rt les oppositions structurelles entre départements.
+- **Le clustering**, qui permet de regrouper les territoires en classes homogènes sur la base des dimensions factorielles, en vue de construire une typologie synthétique de l’offre de soins.
 
 ## Objectifs de l'analyse
 
-L'objectif principal de cette étude est de caractériser la structure A COMPLETER
+L’objectif principal de cette étude est de caractériser la structure territoriale de l’offre de soins en France à l’échelle départementale, et d’en analyser l’évolution entre 2010 et 2024. Il s’agit de dépasser une lecture descriptive des effectifs pour mettre en évidence les dimensions latentes qui organisent les disparités spatiales, en combinant des indicateurs de volume, de structure démographique des professionnels (féminisation, vieillissement) et de structuration des établissements de santé.
+
+Plus spécifiquement, l’analyse poursuit quatre objectifs complémentaires :
+
+1. **Identifier les principaux axes de différenciation entre départements** à partir d’indicateurs quantitatifs synthétiques (niveau global d’offre, structuration en établissements, profil démographique des professionnels), afin de dégager les grandes logiques d’organisation de l’offre de soins.
+
+2. **Comparer la structure de l’offre de soins entre 2010 et 2024** en évaluant la stabilité ou la transformation des gradients territoriaux, notamment l’importance relative des enjeux de volume versus les enjeux de renouvellement générationnel.
+
+3. **Mettre en évidence les associations entre professions de santé et territoires** afin d’identifier des profils de spécialisation (territoires plus “généralistes” vs plus “spécialisés”) et d’éclairer les oppositions structurelles entre départements.
+
+4. **Construire une typologie synthétique des départements** par une classification non supervisée, permettant de regrouper les territoires en classes homogènes et de fournir une lecture opérationnelle des inégalités territoriales de l’offre de soins.
+
+Au final, l’objectif est de produire une représentation lisible et interprétable des disparités départementales, susceptible d’éclairer les enjeux d’aménagement sanitaire et d’anticipation des besoins de soins, en tenant compte simultanément de la quantité d’offre, de sa soutenabilité démographique et de sa spécialisation.
 
 # Méthodologie
 
@@ -358,3 +397,374 @@ Entre 2010 et 2024, la dispersion des individus selon les dimensions liées au v
 L'ACM met ainsi en évidence une typologie territoriale relativement stable de l'offre de soins, structurée autour du niveau de dotation et de la structure démographique des professionnels. Toutefois, la comparaison temporelle souligne une montée en improtance des modalités liées au vieillissement entre 2010 et 2024, confirmant les résultats obtenus par l'ACP et renforçant l'idée d'un enjeu démographique central dans l'évolution de l'offre de soins en France. 
 
 \newpage
+
+
+<!-- section kubra --->
+
+```{r libraries}
+library(readr)
+library(FactoMineR)
+library(factoextra)
+library(knitr)
+library(ggpubr)
+library(gridExtra)
+library(ggplot2)
+library(ggrepel)
+library(stringr)
+```
+
+\section{Analyse factorielle des correspondances (AFC)}
+
+\subsection{Cadre général de l'analyse}
+
+\subsubsection{Contexte et données utilisées}
+
+
+```{r afc_run, include=FALSE}
+base <- read_csv("data/base_afc.csv")
+base <- as.data.frame(base)
+
+rownames(base) <- base[,1]
+base <- base[,-1]
+
+# on garde un objet "tab_afc" pour réutiliser les noms de professions
+tab_afc <- base %>% mutate(across(everything(), as.numeric))
+
+res.afc <- CA(tab_afc, graph = FALSE)
+```
+
+L’analyse factorielle des correspondances est réalisée à partir d’un tableau de contingence construit à partir des données départementales sur les professionnels de santé en France. 
+Dans ce tableau, les lignes correspondent aux différentes professions de santé et les colonnes représentent les départements français (métropole et outre-mer).
+
+Chaque cellule du tableau indique l’effectif de professionnels exerçant une profession donnée dans un département donné. 
+Autrement dit, la base décrit comment chaque profession médicale ou paramédicale est répartie sur l’ensemble du territoire.
+
+La base contient au total 38 professions de santé (médecins généralistes, médecins spécialistes, infirmiers, psychiatres, sages-femmes, chirurgiens-dentistes, auxiliaires médicaux, etc.) et 101 départements. 
+Elle permet donc d’analyser finement la structure territoriale de l’offre de soins.
+
+Ce type de tableau est particulièrement adapté à l’Analyse Factorielle des Correspondances, car il permet d’étudier simultanément les profils des professions (lignes) et les profils des départements (colonnes), et de mettre en évidence les associations entre certaines spécialités médicales et certains territoires.
+
+
+
+\subsubsection{Objectif de l’analyse}
+
+L’objectif de cette Analyse Factorielle des Correspondances est de mettre en évidence les grandes oppositions territoriales dans la répartition des professionnels de santé en France. 
+Il s’agit d’identifier quels départements se caractérisent par des profils spécifiques de professions médicales, et quelles professions sont particulièrement concentrées dans certains types de territoires.
+
+L’AFC permet ainsi de dégager des profils de départements (urbains, ruraux, outre-mer, etc.) et de comprendre comment la structure de l’offre de soins varie selon les territoires.
+
+
+\subsubsection{Justification du choix de la méthode}
+
+L’Analyse Factorielle des Correspondances est particulièrement adaptée aux données utilisées, car celles-ci prennent la forme d’un tableau de contingence croisant deux variables qualitatives : les professions de santé et les départements.
+
+L’AFC permet d’analyser l’écart à l’indépendance entre ces deux dimensions et de représenter, dans un espace de faible dimension, les relations entre les territoires et les professions. 
+Elle offre ainsi une lecture synthétique des inégalités spatiales dans la répartition de l’offre de soins.
+
+\newpage
+
+\subsection{Résultat de l'AFC}
+
+\subsubsection{Étude des inerties et choix du nombre d’axes}
+
+L’étude des inerties permet d’évaluer la part d’information expliquée par chaque axe factoriel issu de l’AFC.  
+Chaque axe est associé à une valeur propre, qui mesure la quantité de variance (ou d’inertie) expliquée par cet axe.
+
+L’analyse des valeurs propres montre que la première dimension concentre l’essentiel de l’information contenue dans le tableau, tandis que la deuxième dimension apporte un complément d’information significatif.  
+À elles deux, les deux premières dimensions expliquent une part majoritaire de l’inertie totale, ce qui justifie l’utilisation du plan factoriel (Dim 1, Dim 2) pour interpréter la structure des données.
+
+Les axes suivants présentent des contributions nettement plus faibles et apportent peu d’information supplémentaire.  
+Ils ne seront donc pas interprétés dans la suite de l’analyse, afin de conserver une représentation lisible et synthétique.
+
+
+
+
+```{r fig1, fig.cap="Pourcentage d’inertie expliqué par les dimensions de l’AFC"}
+print(
+  fviz_screeplot(res.afc, addlabels = TRUE) +
+    ggplot2::labs(title = "Pourcentage d'inertie expliqué par les dimensions") +
+    ggplot2::coord_cartesian(ylim = c(0, 70))
+)
+
+```
+
+Le graphique présente la part d’inertie expliquée par chaque dimension issue de l’Analyse Factorielle des Correspondances. 
+On observe que la première dimension concentre à elle seule une part très importante de l’information, avec \textbf{65,2\%} de l’inertie totale. 
+La deuxième dimension apporte un complément d’information significatif, avec \textbf{13,3\%}. 
+À elles deux, les deux premières dimensions expliquent donc \textbf{78,5\%} de l’inertie totale, ce qui indique que l’essentiel de la structure du tableau est correctement résumé sur le plan factoriel (Dim 1, Dim 2).
+
+
+Les dimensions suivantes contribuent beaucoup plus faiblement à l’explication de l’inertie (6,5\% pour la dimension 3, puis moins de 3\% pour les suivantes), ce qui montre que leur apport informationnel est limité. 
+Il est donc pertinent de concentrer l’analyse sur les deux premières dimensions, qui capturent la majeure partie des différences structurelles entre les départements et les professions de santé.
+
+
+\subsubsection{Interprétation du nuage des professions (plan 1–2)}
+
+
+```{r fig_professions, fig.cap="AFC – Top 20 des professions les plus représentatives sur le plan (Dim 1, Dim 2)"}
+print(
+  {
+    contrib_total <- rowSums(res.afc$row$contrib[, 1:2])
+
+    top20_id   <- order(contrib_total, decreasing = TRUE)[1:20]
+    top20_nom  <- rownames(tab_afc)[top20_id]
+
+    row_ca <- get_ca_row(res.afc)
+    df_top20 <- data.frame(
+      nom     = top20_nom,
+      Dim1    = row_ca$coord[top20_id, 1],
+      Dim2    = row_ca$coord[top20_id, 2],
+      contrib = contrib_total[top20_id]
+    )
+
+    df_top20$groupe_contrib <- cut(
+      df_top20$contrib,
+      breaks = quantile(df_top20$contrib, probs = c(0, 1/3, 2/3, 1)),
+      include.lowest = TRUE,
+      labels = c("Faible", "Moyenne", "Forte")
+    )
+
+    ggplot(df_top20, aes(x = Dim1, y = Dim2)) +
+      geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+      geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3) +
+      geom_point(aes(color = groupe_contrib, size = groupe_contrib)) +
+      geom_text_repel(aes(label = nom, color = groupe_contrib),
+                      max.overlaps = 30, size = 3) +
+      scale_color_manual(
+        name = "Contribution",
+        values = c("Faible"  = "#85b9d4",
+                   "Moyenne" = "#1F78B4",
+                   "Forte"   = "#E31A1C")
+      ) +
+      scale_size_manual(
+        name   = "Contribution",
+        values = c("Faible" = 2.5, "Moyenne" = 4, "Forte" = 6)
+      ) +
+      labs(
+        title = "AFC – Top 20 professions les plus représentatives (plan 1–2)",
+        x = "Dim1 (65,2%)",
+        y = "Dim2 (13,3%)"
+      ) +
+      theme_minimal(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "right"
+      )
+  }
+)
+```
+Le nuage des professions projeté sur le plan factoriel (Dim 1, Dim 2) permet d’analyser la structure territoriale de l’offre de soins en France à travers les profils des différentes professions de santé.
+
+La dimension 1, qui explique 65,2 \% de l’inertie totale, constitue l’axe principal de différenciation. Elle oppose nettement, à droite du graphique, des professions fortement représentées dans la majorité des départements et typiques des territoires densément dotés en offre de soins, comme les infirmiers, les auxiliaires médicaux, les sages-femmes et les chirurgiens-dentistes, à des professions situées à gauche, caractérisées par une répartition plus spécifique et plus concentrée géographiquement, comme les psychiatres, les dermatologues ou certaines catégories de médecins spécialistes. Cet axe peut ainsi être interprété comme une opposition entre une offre de soins généraliste et diffuse et une offre plus spécialisée et territorialisée.
+
+La dimension 2, qui explique 13,3 \% de l’inertie, apporte une différenciation complémentaire entre types de spécialisation médicale. Elle oppose notamment certaines professions médicales positionnées en haut du plan à d’autres situées en bas, ce qui traduit des profils territoriaux distincts, par exemple entre des activités médicales orientées vers le suivi général de la population et des activités plus techniques ou hospitalières.
+
+La contribution des professions, représentée par la couleur et la taille des points, montre que certaines professions jouent un rôle structurant dans la construction du plan factoriel. Les professions en rouge, telles que les psychiatres, les infirmiers ou les auxiliaires médicaux, sont celles qui expliquent le plus la structure des axes. Leur position éloignée de l’origine indique qu’elles sont fortement associées à des types spécifiques de territoires.
+
+En particulier, la position très isolée des psychiatres sur le graphique révèle un profil territorial atypique. Cela signifie que la répartition géographique des psychiatres diffère fortement de celle des autres professions de santé, ce qui suggère une concentration marquée dans certains départements, probablement les plus urbanisés ou spécialisés en santé mentale.
+
+À l’inverse, les professions situées plus près de l’origine du plan factoriel présentent des profils territoriaux proches de la moyenne nationale. Elles contribuent peu à la différenciation des départements et sont réparties de manière relativement homogène sur le territoire.
+
+Ainsi, le nuage des professions met en évidence une structuration claire de l’offre de soins entre des professions généralistes largement diffusées et des professions spécialisées fortement concentrées dans certains types de territoires, ce qui reflète les inégalités spatiales de l’accès aux soins en France.
+
+
+\newpage 
+
+\subsubsection{Contributions des professions aux dimensions 1 et 2}
+
+```{r contrib_dim1, fig.cap="Contributions des professions à la dimension 1 (AFC)"}
+print(
+  fviz_contrib(res.afc, choice = "row", axes = 1, top = 15) +
+    ggplot2::scale_x_discrete(labels = function(x) stringr::str_trunc(x, width = 20)) +
+    ggplot2::labs(
+      title = "Contribution des professions à la dimension 1",
+      x = ""
+    ) +
+    ggplot2::theme_minimal(base_size = 14) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12),
+      axis.text.y = ggplot2::element_text(size = 12),
+      plot.title  = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5)
+    )
+)
+```
+
+
+
+Le graphique des contributions des professions à la dimension 1 met en évidence les variables qui structurent l’axe principal de l’AFC. La ligne rouge pointillée représente le seuil de contribution moyenne, ce qui permet d’identifier les professions réellement déterminantes dans la construction de l’axe. On observe que la contribution est très concentrée sur un nombre réduit de professions, ce qui signifie que l’opposition portée par la dimension 1 est essentiellement expliquée par quelques profils professionnels bien spécifiques.
+
+La profession des \textbf{infirmiers} apparaît comme la plus contributive, avec une part très largement supérieure aux autres. Cela indique que la répartition territoriale des infirmiers joue un rôle central dans la différenciation des départements. Les écarts entre territoires en matière de présence infirmière expliquent donc une grande partie de l’opposition observée sur l’axe 1. D’autres groupes, tels que \textbf{les ensembles de médecins} et \textbf{les auxiliaires médicaux}, ainsi que certaines spécialités comme les psychiatres et les gynécologues médicaux, présentent également des contributions élevées, ce qui montre que l’axe 1 reflète une opposition globale entre des territoires disposant d’une offre de soins dense et diversifiée et d’autres où cette offre est plus limitée ou plus spécialisée.
+
+À l’inverse, les professions situées sous le seuil de contribution moyenne, comme les chirurgiens, les chirurgiens-dentistes, les dermatologues, les pédiatres ou les cardiologues, contribuent peu à la construction de cet axe. Leur répartition territoriale est plus proche de la moyenne et n’explique pas l’opposition principale entre départements. Ainsi, la dimension 1 peut être interprétée comme un axe opposant des territoires caractérisés par une forte présence des professions généralistes et paramédicales à des territoires où ces professions sont relativement moins représentées.
+
+
+```{r contrib_dim2, fig.cap="Contributions des professions à la dimension 2 (AFC)"}
+print(
+  fviz_contrib(
+  res.afc,
+  choice = "row",
+  axes = 2,
+  top = 15
+) +
+  scale_x_discrete(labels = function(x) str_trunc(x, width = 20)) +
+  labs(title = "Contribution des professions à la dimension 2",
+         x = "") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+    axis.text.y = element_text(size = 12),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+)
+```
+
+Le graphique des contributions des professions à la dimension 2 met en évidence les variables qui structurent l’axe secondaire de l’AFC. Contrairement à la dimension 1, qui résume l’opposition principale entre départements, la dimension 2 capture une différenciation plus spécifique liée à certains profils professionnels très marqués. La ligne rouge pointillée représente le seuil de contribution moyenne, au-delà duquel les professions jouent un rôle déterminant dans la construction de l’axe.
+
+On observe que la profession de \textbf{psychiatres} est de loin la plus contributive, suivie des \textbf{médecins généralistes}, de l’\textbf{ensemble des médecins} et des \textbf{infirmiers}. Ces professions expliquent une part très importante de la variabilité portée par la dimension 2, ce qui indique que l’axe est principalement structuré par des différences territoriales liées à la santé mentale et à la médecine de premier recours. La forte contribution des psychiatres montre que leur répartition géographique est très spécifique et qu’elle différencie fortement certains départements des autres.
+
+Les professions comme les \textbf{pédicures-podologues} et l’\textbf{ensemble des auxiliaires médicaux} contribuent également de manière significative, ce qui suggère que la dimension 2 oppose des territoires selon la place relative accordée aux professions paramédicales spécialisées. Cette opposition reflète probablement une différenciation entre des départements disposant d’une offre de soins diversifiée et structurée autour de certaines spécialités, et d’autres où l’offre est plus centrée sur les soins généralistes.
+
+À l’inverse, les professions situées sous le seuil de contribution moyenne, telles que les chirurgiens, les endocrinologues, les dermatologues ou les gynécologues médicaux, contribuent peu à la construction de l’axe 2. Leur répartition est plus homogène et n’explique pas la différenciation spécifique portée par cette dimension.
+
+Ainsi, la dimension 2 peut être interprétée comme un axe de \textbf{spécialisation médicale et de santé mentale}, qui distingue des territoires fortement marqués par la présence de psychiatres et de certaines professions paramédicales de territoires où ces professions sont relativement moins représentées, à niveau global d’offre de soins comparable.
+
+\subsubsection{Analyse conjointe des professions et des départements}
+
+
+```{r}
+
+contrib_row <- rowSums(res.afc$row$contrib[, 1:2])
+top_rows <- names(sort(contrib_row, decreasing = TRUE)[1:10])
+
+
+contrib_col <- rowSums(res.afc$col$contrib[, 1:2])
+top_cols <- names(sort(contrib_col, decreasing = TRUE)[1:10])
+
+```
+
+```{r , fig.cap=" Projection contrainte des professions et des départements sur le plan"}
+print(fviz_ca_biplot(
+  res.afc,
+  select.row = list(name = top_rows),
+  select.col = list(name = top_cols),
+  repel      = TRUE,
+  col.row    = "#1f77b4",   # professions en bleu
+  col.col    = "#d62728",   # départements en rouge
+  ggtheme    = theme_minimal(),
+  title      = "AFC – Professions et départements"
+))
+```
+
+Le biplot représente simultanément les professions de santé (en bleu) et les départements (en rouge) projetés sur le plan factoriel (Dim 1, Dim 2). La proximité entre une profession et un département indique une association relative : une profession est proportionnellement plus présente dans les départements qui lui sont proches sur le plan.
+
+Sur la dimension 1 (65,2 \% de l’inertie), on observe une opposition nette entre, à droite du graphique, des départements fortement dotés en professions de premier recours et paramédicales, comme les départements 30, 971 et 972, qui sont proches des \textbf{infirmiers} et de l’\textbf{ensemble des auxiliaires médicaux}, et, à gauche, des départements tels que le \textbf{75} (Paris) ou le \textbf{92}, qui sont plus proches de professions médicales spécialisées, notamment les \textbf{psychiatres}, les \textbf{gynécologues médicaux et obstétriciens} et l’\textbf{ensemble des médecins spécialistes hors généralistes}. Cette dimension oppose donc des territoires à forte orientation généraliste et paramédicale à des territoires à forte spécialisation médicale.
+
+La dimension 2 (13,3 \% de l’inertie) apporte une différenciation supplémentaire, notamment liée à la santé mentale et à certaines professions paramédicales. Les \textbf{psychiatres} se situent très bas sur l’axe, ce qui montre que leur répartition est très spécifique et distingue fortement certains territoires. À l’inverse, des professions comme les \textbf{pédicures-podologues} ou certains groupes de médecins se situent plus haut, indiquant des profils territoriaux différents.
+
+Les départements d’outre-mer, comme les \textbf{971} et \textbf{972}, apparaissent à droite du plan et sont associés aux professions paramédicales et de premier recours, ce qui suggère une structure d’offre de soins plus orientée vers les soins courants que vers les spécialités médicales lourdes. À l’inverse, des départements métropolitains très urbanisés comme le \textbf{75} ou le \textbf{92} sont situés à gauche et proches de professions spécialisées, ce qui reflète la concentration des activités médicales spécialisées dans les grands pôles urbains.
+
+Ainsi, le biplot met en évidence une structuration claire de l’offre de soins entre des territoires généralistes, souvent périphériques ou ultramarins, et des territoires spécialisés, principalement urbains, caractérisés par une forte présence de professions médicales à haute spécialisation.
+
+
+\subsection{Conclusion}
+
+
+L’Analyse Factorielle des Correspondances a permis de mettre en évidence une structuration claire de la répartition territoriale des professionnels de santé en France. Le plan factoriel (Dim 1, Dim 2), qui concentre l’essentiel de l’inertie, fournit une représentation synthétique mais très informative des différences entre départements.
+
+La première dimension oppose principalement des territoires caractérisés par une forte présence des professions généralistes et paramédicales, comme les infirmiers et les auxiliaires médicaux, à des territoires marqués par une forte concentration de professions médicales spécialisées. Elle reflète ainsi une opposition entre une offre de soins diffuse, tournée vers les soins de premier recours, et une offre plus spécialisée et concentrée dans certains départements.
+
+La seconde dimension met en évidence des différences plus fines liées notamment à la santé mentale et à certaines professions paramédicales spécialisées, en particulier les psychiatres, dont la répartition territoriale apparaît très spécifique et fortement discriminante.
+
+L’analyse conjointe des professions et des départements confirme l’existence de profils territoriaux distincts, opposant notamment les départements urbains, caractérisés par une forte spécialisation médicale, aux départements périphériques ou d’outre-mer, davantage orientés vers les soins généralistes et paramédicaux. L’AFC met ainsi en évidence les inégalités spatiales de l’offre de soins et fournit une base solide pour l’interprétation des dynamiques territoriales du système de santé français.
+
+\newpage
+<!--- partie matteo ---> 
+
+# Clustering — Typologie départementale de l’offre de soins (2024)
+
+## Contexte et objectifs
+
+La classification vise à regrouper les départements français selon la similarité de leur profil d’offre de soins en 2024. À partir des variables de volume (effectif et densité) et de structure des établissements (nombre total, hôpitaux, structures privées, ambulatoires, HAD et MSP), elle permet de mettre en évidence des groupes de territoires homogènes et de compléter les analyses factorielles précédentes.
+
+## Choix du nombre de clusters
+
+### Dendrogramme — CAH (Ward)
+
+```{r dendro2024, echo=FALSE, fig.cap="Dendrogramme de la classification ascendante hiérarchique (méthode de Ward), année 2024.", out.width='100%',  fig.pos = "H"}
+knitr::include_graphics("GraphClusters/Dendrogramme.png")
+```
+
+Le dendrogramme (Figure \ref{fig:dendro2024}) met en évidence une structuration nette des départements. Les ruptures observées dans les hauteurs de fusion suggèrent l’existence d’un nombre limité de groupes relativement homogènes. Une coupe en quatre classes apparaît comme un compromis pertinent entre qualité statistique de la partition et lisibilité.
+
+### Méthode du coude (WSS)
+
+```{r wss2024, echo=FALSE, fig.cap="Méthode du coude (WSS) pour le choix du nombre de clusters, année 2024.", out.width='85%', fig.pos = "H"}
+knitr::include_graphics("GraphClusters/Methode du coude (WSS).png")
+```
+
+La méthode du coude (Figure \ref{fig:wss2024}) confirme ce choix. La baisse de l’inertie intra-classe est très forte pour les faibles valeurs de $k$, puis ralentit nettement. À partir de $k=4$, les gains marginaux deviennent limités, ce qui plaide pour une partition en quatre groupes.
+
+### Indice de silhouette
+
+```{r silhouette2024, echo=FALSE, fig.cap="Indice moyen de silhouette selon le nombre de clusters, année 2024.", out.width='85%', fig.pos = "H"}
+knitr::include_graphics("GraphClusters/Indice de silhouette.png")
+```
+
+L’indice moyen de silhouette (Figure \ref{fig:silhouette2024}) indique une bonne séparation des groupes pour de faibles valeurs de $k$. Bien que la valeur maximale apparaisse pour $k=3$, la solution $k=4$ conserve une qualité de partition élevée et permet une typologie plus riche. Nous retenons donc $k=4$.
+
+## Résultats et visualisation des groupes
+
+### Projection des clusters (k-means, $k=4$)
+
+```{r km2024, echo=FALSE, fig.cap="Projection des clusters k-means (k = 4) sur le plan ACP, année 2024.", out.width='100%', fig.pos = "H"}
+knitr::include_graphics("GraphClusters/k-means (k=4).png")
+```
+
+La projection sur le plan factoriel (Figure \ref{fig:km2024}) met en évidence une structuration claire de l’espace : les clusters occupent des régions distinctes, ce qui confirme que la classification capte des différences réelles entre profils départementaux.
+
+### Projection des classes issues de la CAH ($k=4$)
+
+```{r cah2024, echo=FALSE, fig.cap="Projection des classes issues de la CAH (k = 4) sur le plan ACP, année 2024.", out.width='100%', fig.pos = "H"}
+knitr::include_graphics("GraphClusters/CAH Ward (k=4).png")
+```
+
+La projection des classes issues de la CAH (Figure \ref{fig:cah2024}) est très proche de celle obtenue par k-means, ce qui renforce la robustesse de la typologie retenue.
+
+## Profils moyens des clusters
+
+### Profils des clusters (moyennes standardisées)
+
+```{r profils2024, echo=FALSE, fig.cap="Profils des clusters : moyennes standardisées (z-scores) des variables, année 2024.", out.width='100%', fig.pos = "H"}
+knitr::include_graphics("GraphClusters/Profils des clusters.png")
+```
+
+Le graphique des profils (Figure \ref{fig:profils2024}) permet d’interpréter le contenu des clusters. Les valeurs étant standardisées, une valeur positive indique un niveau supérieur à la moyenne nationale 2024, tandis qu’une valeur négative indique un niveau inférieur.
+
+Le **cluster 1** correspond à des départements **globalement sous-dotés**, caractérisés par des niveaux inférieurs à la moyenne pour l’effectif, la densité et l’ensemble des indicateurs d’établissements.
+
+Le **cluster 2** se distingue par une **très forte densité et un effectif élevé** de professionnels de santé, alors que les structures d’établissements sont proches de la moyenne. Il s’agit de territoires **très concentrés en professionnels**.
+
+Le **cluster 3** est caractérisé par des niveaux très élevés pour toutes les variables liées aux **établissements de santé** (hôpitaux, structures privées, ambulatoires, HAD et MSP). Il correspond à des départements **fortement structurés en infrastructures de soins**.
+
+Le **cluster 4** présente un profil **intermédiaire**, avec plusieurs indicateurs d’établissements légèrement au-dessus de la moyenne mais une densité et un effectif proches de la moyenne nationale.
+
+## Conclusion du clustering
+
+La classification met en évidence une forte hétérogénéité territoriale de l’offre de soins en France en 2024. Elle distingue des territoires sous-dotés, des territoires très concentrés en professionnels et des pôles fortement structurés autour des établissements. Cette typologie complète les analyses factorielles en offrant une lecture synthétique et directement interprétable des inégalités territoriales.
+
+
+<!--- conclusion générale --->
+
+# Conclusion générale
+
+Cette étude avait pour objectif de caractériser la structure territoriale de l’offre de soins en France et son évolution entre 2010 et 2024 à l’aide d’outils de statistique multivariée. En mobilisant de manière conjointe l’ACP, l’ACM, l’AFC et une classification non supervisée, nous avons pu dépasser une lecture purement descriptive pour mettre en évidence les grandes dynamiques qui structurent le système de santé français à l’échelle départementale.
+
+Les résultats de l’Analyse en Composantes Principales ont montré que l’offre de soins reste fondamentalement organisée autour de deux dimensions majeures : le volume global de professionnels et d’établissements d’une part, et la structure démographique des praticiens d’autre part. La comparaison entre 2010 et 2024 met en évidence une montée en importance des variables liées au vieillissement, traduisant un enjeu croissant de renouvellement générationnel dans de nombreux territoires. Les inégalités territoriales ne reposent donc plus uniquement sur la quantité d’offre disponible, mais de plus en plus sur sa soutenabilité démographique.
+
+L’Analyse des Correspondances Multiples confirme cette lecture sous un angle qualitatif. La typologie issue de la discrétisation des indicateurs met en évidence des profils départementaux stables mais dont la structuration évolue dans le temps. Les modalités liées au vieillissement et, dans une moindre mesure, à la féminisation de l’offre, contribuent davantage à la différenciation des territoires en 2024 qu’en 2010. Cela suggère que les enjeux démographiques prennent une place croissante dans la structuration spatiale de l’offre de soins.
+
+L’Analyse Factorielle des Correspondances apporte un éclairage complémentaire en étudiant la répartition des professions de santé. Elle met en évidence une opposition nette entre, d’une part, des territoires fortement marqués par les professions généralistes et paramédicales, et, d’autre part, des territoires caractérisés par une forte concentration de spécialités médicales. Les grands pôles urbains, comme Paris et les départements de la petite couronne, apparaissent ainsi comme des espaces de spécialisation médicale, tandis que les départements périphériques et d’outre-mer sont davantage orientés vers les soins de premier recours. La place très spécifique des psychiatres illustre par ailleurs l’existence de logiques territoriales propres à certaines spécialités.
+
+Enfin, le clustering réalisé sur l’année 2024 synthétise l’ensemble de ces résultats en proposant une typologie claire des départements français. Quatre grands profils émergent : des territoires sous-dotés, des territoires très concentrés en professionnels, des pôles fortement structurés autour des établissements de santé, et des territoires intermédiaires. Cette classification fournit une lecture opérationnelle des inégalités territoriales, en distinguant à la fois les problèmes de pénurie, de concentration excessive et de structuration des infrastructures.
+
+Dans leur ensemble, ces résultats montrent que l’offre de soins en France est de plus en plus marquée par des déséquilibres territoriaux combinant des enjeux quantitatifs et démographiques. Le vieillissement des professionnels, la concentration des spécialités dans les grands pôles urbains et la fragilité de certains territoires périphériques constituent des défis majeurs pour l’aménagement sanitaire du territoire. Cette analyse met ainsi en évidence la nécessité de politiques publiques différenciées, capables de tenir compte à la fois des volumes d’offre, des profils démographiques des praticiens et des spécificités territoriales, afin de garantir un accès équitable et durable aux soins sur l’ensemble du territoire français.

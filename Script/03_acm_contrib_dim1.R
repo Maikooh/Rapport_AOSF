@@ -10,7 +10,8 @@ get_acm_contrib1 <- function(target_year, color_fill) {
   mca <- MCA(df_year[, c('niveau_offre', 'feminisation', 'vieillissement')], graph = FALSE)
   
   fviz_contrib(mca, choice = 'var', axes = 1, fill = color_fill, color = 'black') +
-    labs(title = paste("Contrib. Dim 1 -", target_year)) +
+    labs(title = paste("Contrib. Dim 1 -", target_year),
+         x = "") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 }

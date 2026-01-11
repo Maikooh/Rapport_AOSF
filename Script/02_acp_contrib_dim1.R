@@ -18,8 +18,10 @@ get_contrib_plot <- function(annee_cible) {
   fviz_contrib(pca, choice = 'var', axes = 1,
                fill = ifelse(annee_cible == "2024", '#3c8dbc', '#999999'), 
                color = 'black') +
-    labs(title = paste("Contribution Dim 1 (", annee_cible, ")", sep="")) +
-    theme_minimal()
+    labs(title = paste("Contribution Dim 1 (", annee_cible, ")", sep=""),
+         x = "") +
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 }
 
 # Génération des deux graphiques

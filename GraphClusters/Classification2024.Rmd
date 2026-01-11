@@ -1,0 +1,171 @@
+---
+title: "Classification 2024"
+author: "MOREAU MATTEO"
+date: "2026-01-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+## ============================================================
+## CLASSIFICATION 2024 — CODE SEUL (A COLLER EN 1 FOIS)
+## ============================================================
+
+## 0) Packages
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(factoextra)
+  library(tidyr)
+})
+
+## 1) Charger la base + filtrer 2024
+data <- readRDS("./data/base_clust.rds")
+
+# Détecter automatiquement la colonne année
+col_annee <- intersect(names(data), c("annee", "année", "year", "Year"))
+if (length(col_annee) == 0) {
+  stop("❌ Aucune colonne d'année trouvée. Colonnes disponibles : ",
+       paste(names(data), collapse = ", "))
+}
+col_annee <- col_annee[1]
+
+# Filtrage 2024
+data <- data %>% filter(.data[[col_annee]] == 2024)
+cat("✅ Base filtrée sur", col_annee, "= 2024 | n =", nrow(data), "\n")
+
+## 2) Variables clustering (z-scores)
+vars_clust <- c("effectif", "densite", "nb_total", "nb_hop",
+                "nb_prives", "nb_ambu", "nb_had", "nb_msp")
+
+miss <- setdiff(vars_clust, names(data))
+if (length(miss) > 0) stop("❌ Variables manquantes : ", paste(miss, collapse = ", "))
+
+X <- data %>% select(all_of(vars_clust)) %>% as.data.frame()
+
+# Retirer lignes NA si besoin
+ok <- complete.cases(X)
+if (!all(ok)) {
+  cat("⚠️ Lignes supprimées (NA) :", sum(!ok), "\n")
+  data <- data[ok, ]
+  X <- X[ok, , drop = FALSE]
+}
+
+## ==========================================================
+## A) CAH (Ward) sur toute la base 2024
+## ==========================================================
+set.seed(123)
+
+d <- dist(X)
+hc <- hclust(d, method = "ward.D2")
+
+# Dendrogramme
+p_dend <- fviz_dend(hc, cex = 0.7,
+                    main = "Dendrogramme — CAH (Ward) (2024)")
+print(p_dend)
+
+# Découpage CAH (modifiable)
+k_cah <- 4
+cah_clusters <- cutree(hc, k = k_cah)
+
+# Visualisation CAH sur ACP
+pca_all <- prcomp(X, scale. = FALSE)
+p_cah <- fviz_cluster(list(data = pca_all$x, cluster = cah_clusters),
+                      geom = "point", ellipse = TRUE,
+                      ggtheme = theme_minimal()) +
+  ggtitle(paste0("CAH Ward (k = ", k_cah, ") — Projection ACP (2024)"))
+print(p_cah)
+
+## ==========================================================
+## B) Choix de k (WSS + silhouette) sur toute la base 2024
+## ==========================================================
+set.seed(123)
+p_wss <- fviz_nbclust(X, kmeans, method = "wss") +
+  ggtitle("Méthode du coude (WSS) — 2024")
+print(p_wss)
+
+p_sil <- fviz_nbclust(X, kmeans, method = "silhouette") +
+  ggtitle("Indice de silhouette — 2024")
+print(p_sil)
+
+## ==========================================================
+## C) K-means final sur toute la base 2024
+## ==========================================================
+k <- 4  # 🔁 change ici si tu choisis un autre k après WSS/silhouette
+
+set.seed(123)
+km <- kmeans(X, centers = k, nstart = 50)
+
+data$cluster <- factor(km$cluster)
+
+cat("\n📌 Taille des clusters (k-means, 2024)\n")
+print(table(data$cluster))
+
+# Visualisation k-means sur ACP
+res_pca <- prcomp(X, scale. = FALSE)
+p_km <- fviz_cluster(list(data = res_pca$x, cluster = km$cluster),
+                     geom = "point", ellipse = TRUE,
+                     ggtheme = theme_minimal()) +
+  ggtitle(paste0("k-means (k = ", k, ") — Projection ACP (2024)"))
+print(p_km)
+
+## ==========================================================
+## D) Profils des clusters (moyennes standardisées) + barplot
+## ==========================================================
+res_means <- data %>%
+  group_by(cluster) %>%
+  summarise(across(all_of(vars_clust), mean), .groups = "drop")
+
+cat("\n📌 Moyennes standardisées par cluster (z-scores)\n")
+print(res_means)
+
+res_means_long <- res_means %>%
+  pivot_longer(cols = -cluster, names_to = "variable", values_to = "moyenne_z")
+
+p_profils <- ggplot(res_means_long, aes(x = variable, y = moyenne_z, fill = cluster)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Profils des clusters (moyennes standardisées, 2024)",
+       x = "Variable", y = "Moyenne (z-score)")
+print(p_profils)
+
+## ==========================================================
+## E) Interprétation automatique (texte) des clusters
+## ==========================================================
+interpret_cluster <- function(means_row, seuil = 0.5) {
+  v <- means_row %>% select(-cluster)
+  z <- as.numeric(v[1, ])
+  names(z) <- names(v)
+
+  hauts <- names(z[z >= seuil])
+  bas   <- names(z[z <= -seuil])
+
+  list(
+    hauts = if (length(hauts) == 0) "aucune variable très au-dessus de la moyenne" else paste(hauts, collapse = ", "),
+    bas   = if (length(bas)   == 0) "aucune variable très en-dessous de la moyenne" else paste(bas, collapse = ", ")
+  )
+}
+
+seuil <- 0.5
+interp <- lapply(split(res_means, res_means$cluster), interpret_cluster, seuil = seuil)
+
+cat("\n==============================\n")
+cat("INTERPRÉTATION — Synthèse 2024\n")
+cat("==============================\n")
+cat("Rappel : z > 0 = au-dessus de la moyenne nationale 2024 ; z < 0 = en-dessous.\n")
+cat("Seuil utilisé : |z| ≥ ", seuil, "\n\n", sep = "")
+
+for (cl in names(interp)) {
+  cat("Cluster ", cl, "\n", sep = "")
+  cat("  + Au-dessus (|z| ≥ ", seuil, ") : ", interp[[cl]]$hauts, "\n", sep = "")
+  cat("  - En-dessous (|z| ≥ ", seuil, ") : ", interp[[cl]]$bas, "\n\n", sep = "")
+}
+
+cat("✅ Terminé : CAH + k-means + profils + interprétation (2024)\n")
+```
